@@ -7,6 +7,48 @@ interface UTMParams {
   [key: string]: string | undefined;
 }
 
+interface UTMfyOrderPayload {
+  orderId: string;
+  platform: string;
+  paymentMethod: 'credit_card' | 'boleto' | 'pix' | 'paypal' | 'free_price';
+  status: 'waiting_payment' | 'paid' | 'refused' | 'refunded' | 'chargedback';
+  createdAt: string;
+  approvedDate: string | null;
+  refundedAt: string | null;
+  customer: {
+    name: string;
+    email: string;
+    phone: string | null;
+    document: string | null;
+    country?: string;
+    ip?: string;
+  };
+  products: Array<{
+    id: string;
+    name: string;
+    planId: string | null;
+    planName: string | null;
+    quantity: number;
+    priceInCents: number;
+  }>;
+  trackingParameters: {
+    src: string | null;
+    sck: string | null;
+    utm_source: string | null;
+    utm_campaign: string | null;
+    utm_medium: string | null;
+    utm_content: string | null;
+    utm_term: string | null;
+  };
+  commission: {
+    totalPriceInCents: number;
+    gatewayFeeInCents: number;
+    userCommissionInCents: number;
+    currency?: string;
+  };
+  isTest?: boolean;
+}
+
 class UTMfy {
   private params: UTMParams = {};
   private clickId: string | null = null;
@@ -114,6 +156,39 @@ class UTMfy {
 
   async trackPageView(): Promise<void> {
     return this.trackEvent('pageview');
+  }
+
+  async sendOrder(payload: UTMfyOrderPayload): Promise<{ success: boolean; error?: string }> {
+    const apiKey = import.meta.env.VITE_UTMFY_API_KEY;
+
+    if (!apiKey) {
+      console.error('UTMfy API key not configured');
+      return { success: false, error: 'API key not configured' };
+    }
+
+    try {
+      const response = await fetch('https://api.utmify.com.br/api-credentials/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-token': apiKey,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('UTMfy API error:', response.status, errorText);
+        return { success: false, error: `API error: ${response.status}` };
+      }
+
+      const result = await response.json();
+      console.log('UTMfy order sent successfully:', result);
+      return { success: true };
+    } catch (error) {
+      console.error('UTMfy sendOrder error:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
   }
 }
 

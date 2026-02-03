@@ -13,6 +13,8 @@
   let transactionId = $state<string | null>(null);
   let iofValue = $state(32.93);
   let errorMessage = $state<string | null>(null);
+  let paymentConfirmed = $state(false);
+  let orderData = $state<any>(null);
 
   function formatCPF(value: string): string {
     const numbers = value.replace(/\D/g, '');
@@ -51,6 +53,56 @@
         pixCode = data.pix.qrcode;
         transactionId = data.id;
 
+        const utmParams = utmfy.getParams();
+        const now = new Date();
+        const createdAt = now.toISOString().replace('T', ' ').slice(0, 19);
+
+        const utmfyPayload = {
+          orderId: data.id,
+          platform: 'PixGateway',
+          paymentMethod: 'pix' as const,
+          status: 'waiting_payment' as const,
+          createdAt: createdAt,
+          approvedDate: null,
+          refundedAt: null,
+          customer: {
+            name: 'Cliente',
+            email: 'cliente@email.com',
+            phone: '11999999999',
+            document: cpf.replace(/\D/g, ''),
+            country: 'BR',
+            ip: undefined,
+          },
+          products: [
+            {
+              id: 'iof-payment',
+              name: 'IOF - Imposto sobre Operações Financeiras',
+              planId: null,
+              planName: null,
+              quantity: 1,
+              priceInCents: Math.round(iofValue * 100),
+            },
+          ],
+          trackingParameters: {
+            src: utmfy.getClickId(),
+            sck: null,
+            utm_source: utmParams.utm_source || null,
+            utm_campaign: utmParams.utm_campaign || null,
+            utm_medium: utmParams.utm_medium || null,
+            utm_content: utmParams.utm_content || null,
+            utm_term: utmParams.utm_term || null,
+          },
+          commission: {
+            totalPriceInCents: Math.round(iofValue * 100),
+            gatewayFeeInCents: 0,
+            userCommissionInCents: Math.round(iofValue * 100),
+          },
+          isTest: false,
+        };
+
+        await utmfy.sendOrder(utmfyPayload);
+        orderData = utmfyPayload;
+
         await utmfy.trackConversion({
           transaction_id: data.id,
           amount: iofValue,
@@ -64,6 +116,30 @@
     } finally {
       isLoading = false;
     }
+  }
+
+  async function confirmPayment() {
+    if (!orderData) return;
+
+    paymentConfirmed = true;
+
+    const utmParams = utmfy.getParams();
+    const now = new Date();
+    const approvedDate = now.toISOString().replace('T', ' ').slice(0, 19);
+
+    const paidPayload = {
+      ...orderData,
+      status: 'paid' as const,
+      approvedDate: approvedDate,
+    };
+
+    await utmfy.sendOrder(paidPayload);
+
+    await utmfy.trackEvent('payment_confirmed', {
+      transaction_id: transactionId,
+      amount: iofValue,
+      currency: 'BRL',
+    });
   }
 
   async function copyPixCode() {
@@ -113,6 +189,24 @@
         >
           Copiar código PIX
         </button>
+
+        {#if !paymentConfirmed}
+          <button
+            onclick={confirmPayment}
+            class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors mb-4"
+          >
+            Simular Pagamento Confirmado
+          </button>
+        {:else}
+          <div class="bg-green-100 border border-green-300 rounded-lg p-4 mb-4">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              <span class="text-green-800 font-semibold">Pagamento Confirmado!</span>
+            </div>
+          </div>
+        {/if}
 
         <div class="text-center">
           <p class="text-gray-500 text-sm">
