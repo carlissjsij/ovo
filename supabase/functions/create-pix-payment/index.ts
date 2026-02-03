@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import QRCode from "npm:qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,31 +14,6 @@ interface PaymentRequest {
   customerPhone: string;
 }
 
-function generatePixCode(amount: number, cpf: string): string {
-  const value = (amount / 100).toFixed(2);
-  const pixKey = Deno.env.get("PIX_KEY") || "32401842000177";
-  const merchantName = Deno.env.get("PIX_MERCHANT_NAME") || "Receita Federal";
-  const merchantCity = Deno.env.get("PIX_MERCHANT_CITY") || "SAO PAULO";
-
-  const merchantNameFormatted = merchantName.replace(/\s+/g, '');
-  const merchantCityFormatted = merchantCity.replace(/\s+/g, '');
-
-  const payload = [
-    "00020126",
-    "580014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey,
-    "52040000",
-    "5303986",
-    "54" + String(value.length).padStart(2, '0') + value,
-    "5802BR",
-    "59" + String(merchantNameFormatted.length).padStart(2, '0') + merchantNameFormatted,
-    "60" + String(merchantCityFormatted.length).padStart(2, '0') + merchantCityFormatted,
-    "62070503***",
-    "6304"
-  ].join("");
-
-  return payload;
-}
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -50,11 +24,11 @@ Deno.serve(async (req: Request) => {
 
   try {
     const body: PaymentRequest = await req.json();
-    const { amount, customerCpf } = body;
+    const { amount, customerCpf, customerName, customerEmail, customerPhone } = body;
 
-    if (!amount || !customerCpf) {
+    if (!amount || !customerCpf || !customerName || !customerEmail || !customerPhone) {
       return new Response(
-        JSON.stringify({ error: "Amount and CPF are required" }),
+        JSON.stringify({ error: "All customer fields are required" }),
         {
           status: 400,
           headers: {
@@ -65,23 +39,75 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const pixCode = generatePixCode(amount, customerCpf);
+    const secretKey = Deno.env.get("PAYZOR_SECRET_KEY");
+    const publicKey = Deno.env.get("PAYZOR_PUBLIC_KEY");
 
-    const qrcodeUrl = await QRCode.toDataURL(pixCode, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 256,
+    if (!secretKey || !publicKey) {
+      return new Response(
+        JSON.stringify({ error: "Payment gateway not configured" }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const credentials = btoa(`${secretKey}:${publicKey}`);
+
+    const payzorPayload = {
+      amount: amount,
+      paymentMethod: "PIX",
+      externalRef: `IOF-${Date.now()}`,
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        document: {
+          type: "CPF",
+          number: customerCpf,
+        },
+      },
+      items: [
+        {
+          title: "IOF - Imposto sobre Operações Financeiras",
+          description: "Pagamento obrigatório IOF",
+          unitPrice: amount,
+          quantity: 1,
+        },
+      ],
+      pix: {
+        expiresInDays: 1,
+      },
+    };
+
+    const payzorResponse = await fetch("https://api.payzor.com.br/api/v1/transactions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${credentials}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payzorPayload),
     });
 
-    const transactionId = crypto.randomUUID();
+    if (!payzorResponse.ok) {
+      const errorData = await payzorResponse.text();
+      console.error("Payzor API Error:", errorData);
+      throw new Error(`Payzor API returned ${payzorResponse.status}`);
+    }
+
+    const payzorData = await payzorResponse.json();
 
     const data = {
-      id: transactionId,
-      status: "pending",
-      amount: amount,
+      id: payzorData.id,
+      status: payzorData.status,
+      amount: payzorData.amount,
       pix: {
-        qrcode: pixCode,
-        qrcodeUrl: qrcodeUrl,
+        qrcode: payzorData.pix.qrcode,
+        qrcodeUrl: payzorData.pix.qrcodeUrl,
+        expirationDate: payzorData.pix.expirationDate,
       },
     };
 
