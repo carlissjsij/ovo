@@ -45,11 +45,13 @@
         },
       });
 
-      console.log('[Checkout] Response:', { data, error });
+      console.log('[Checkout] Full response:', JSON.stringify({ data, error }, null, 2));
 
       if (error) {
         console.error('[Checkout] Edge function error:', error);
-        throw error;
+        errorMessage = 'Erro ao chamar função de pagamento: ' + (error.message || 'Erro desconhecido');
+        isLoading = false;
+        return;
       }
 
       if (data?.error) {
@@ -59,6 +61,7 @@
         } else {
           errorMessage = data.details || data.error || 'Erro ao processar pagamento.';
         }
+        isLoading = false;
         return;
       }
 
@@ -126,8 +129,12 @@
           currency: 'BRL',
           payment_method: 'pix',
         }).catch(err => console.error('[Checkout] UTMfy trackConversion error:', err));
+
+        console.log('[Checkout] QR Code generated, showing payment screen');
       } else {
+        console.error('[Checkout] Invalid response - no pix data:', data);
         errorMessage = 'Resposta inválida do servidor. Tente novamente.';
+        isLoading = false;
       }
     } catch (error: any) {
       console.error('[Checkout] Payment error:', error);
