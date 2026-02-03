@@ -14,23 +14,22 @@ export class ProtectionSystem {
 
   async initialize(): Promise<ProtectionResult> {
     try {
-      console.log('[Protection] Starting initialization...');
-
       const fp = await Promise.race([
         fingerprint.get(),
         new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error('Fingerprint timeout')), 5000)
+          setTimeout(() => reject(new Error('Fingerprint timeout')), 2000)
         )
       ]);
 
-      console.log('[Protection] Fingerprint generated:', fp.substring(0, 10) + '...');
       this.fingerprintCache = fp;
 
-      console.log('[Protection] Checking if blocked...');
-      const isBlocked = await this.checkIfBlocked(fp);
+      const isBlocked = await Promise.race([
+        this.checkIfBlocked(fp),
+        new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 1000))
+      ]);
+
       if (isBlocked) {
-        console.log('[Protection] Fingerprint is blocked');
-        await this.logAccess(fp, true, 'previously-blocked');
+        this.logAccess(fp, true, 'previously-blocked').catch(console.error);
         return {
           allowed: false,
           fingerprint: fp,
@@ -38,14 +37,16 @@ export class ProtectionSystem {
         };
       }
 
-      console.log('[Protection] Running bot detection...');
-      const detectionResult = await botDetector.detect();
-      console.log('[Protection] Bot detection result:', detectionResult);
+      const detectionResult = await Promise.race([
+        botDetector.detect(),
+        new Promise<any>((resolve) =>
+          setTimeout(() => resolve({ isBot: false, isSuspicious: false, score: 0, detections: [], details: {} }), 1000)
+        )
+      ]);
 
       if (detectionResult.isBot) {
-        console.log('[Protection] Bot detected, blocking...');
-        await this.blockFingerprint(fp, 'bot-detected', detectionResult);
-        await this.logAccess(fp, true, 'bot-detected', detectionResult);
+        this.blockFingerprint(fp, 'bot-detected', detectionResult).catch(console.error);
+        this.logAccess(fp, true, 'bot-detected', detectionResult).catch(console.error);
         return {
           allowed: false,
           fingerprint: fp,
@@ -54,28 +55,8 @@ export class ProtectionSystem {
         };
       }
 
-      if (detectionResult.isSuspicious) {
-        console.log('[Protection] Suspicious activity detected');
-        await this.logAccess(fp, true, 'suspicious-activity', detectionResult);
+      this.logAccess(fp, detectionResult.isSuspicious, detectionResult.isSuspicious ? 'suspicious-activity' : 'clean', detectionResult).catch(console.error);
 
-        const suspiciousCount = await this.getSuspiciousCount(fp);
-        console.log('[Protection] Suspicious count:', suspiciousCount);
-        if (suspiciousCount >= 3) {
-          console.log('[Protection] Too many suspicious attempts, blocking...');
-          await this.blockFingerprint(fp, 'repeated-suspicious-activity', detectionResult);
-          return {
-            allowed: false,
-            fingerprint: fp,
-            reason: 'Múltiplas atividades suspeitas detectadas',
-            detectionResult
-          };
-        }
-      } else {
-        console.log('[Protection] Clean access, logging...');
-        await this.logAccess(fp, false, 'clean', detectionResult);
-      }
-
-      console.log('[Protection] Access allowed');
       return {
         allowed: true,
         fingerprint: fp,
@@ -85,7 +66,7 @@ export class ProtectionSystem {
       console.error('[Protection] System error:', error);
       return {
         allowed: true,
-        fingerprint: 'error',
+        fingerprint: 'error-' + Date.now(),
         reason: 'Erro no sistema de proteção'
       };
     }

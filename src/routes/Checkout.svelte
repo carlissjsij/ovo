@@ -34,6 +34,7 @@
     errorMessage = null;
 
     try {
+      console.log('[Checkout] Creating PIX payment...');
       const { data, error } = await supabase.functions.invoke('create-pix-payment', {
         body: {
           amount: Math.round(iofValue * 100),
@@ -44,9 +45,25 @@
         },
       });
 
-      if (error) throw error;
+      console.log('[Checkout] Response:', { data, error });
+
+      if (error) {
+        console.error('[Checkout] Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        console.error('[Checkout] Payment gateway error:', data);
+        if (data.error === 'Payment gateway not configured') {
+          errorMessage = 'Gateway de pagamento não configurado. Entre em contato com o suporte.';
+        } else {
+          errorMessage = data.details || data.error || 'Erro ao processar pagamento.';
+        }
+        return;
+      }
 
       if (data?.pix) {
+        console.log('[Checkout] PIX generated successfully');
         pixCode = data.pix.qrcode;
         transactionId = data.id;
 
@@ -102,18 +119,19 @@
           isTest: false,
         };
 
-        await utmfy.sendOrder(utmfyPayload);
-
+        await utmfy.sendOrder(utmfyPayload).catch(err => console.error('[Checkout] UTMfy sendOrder error:', err));
         await utmfy.trackConversion({
           transaction_id: data.id,
           amount: iofValue,
           currency: 'BRL',
           payment_method: 'pix',
-        });
+        }).catch(err => console.error('[Checkout] UTMfy trackConversion error:', err));
+      } else {
+        errorMessage = 'Resposta inválida do servidor. Tente novamente.';
       }
-    } catch (error) {
-      console.error('Payment error:', error);
-      errorMessage = 'Erro ao processar pagamento. Tente novamente em alguns instantes.';
+    } catch (error: any) {
+      console.error('[Checkout] Payment error:', error);
+      errorMessage = error?.message || 'Erro ao processar pagamento. Tente novamente em alguns instantes.';
     } finally {
       isLoading = false;
     }

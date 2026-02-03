@@ -60,43 +60,7 @@ export class BrowserFingerprint {
   }
 
   private async getAudioFingerprint(): Promise<string> {
-    try {
-      const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return 'no-audio';
-
-      const context = new AudioContext();
-      const oscillator = context.createOscillator();
-      const analyser = context.createAnalyser();
-      const gainNode = context.createGain();
-      const scriptProcessor = context.createScriptProcessor(4096, 1, 1);
-
-      gainNode.gain.value = 0;
-      oscillator.connect(analyser);
-      analyser.connect(scriptProcessor);
-      scriptProcessor.connect(gainNode);
-      gainNode.connect(context.destination);
-
-      oscillator.start(0);
-
-      return new Promise((resolve) => {
-        scriptProcessor.onaudioprocess = (event) => {
-          const data = event.inputBuffer.getChannelData(0);
-          const hash = Array.from(data.slice(0, 30))
-            .map(v => Math.abs(v).toFixed(6))
-            .join('');
-
-          oscillator.stop();
-          scriptProcessor.disconnect();
-          analyser.disconnect();
-          gainNode.disconnect();
-          context.close();
-
-          resolve(hash.slice(0, 50));
-        };
-      });
-    } catch {
-      return 'audio-error';
-    }
+    return 'audio-disabled';
   }
 
   private async getFontsFingerprint(): Promise<string> {
@@ -171,18 +135,14 @@ export class BrowserFingerprint {
   }
 
   async generate(): Promise<FingerprintData> {
-    const [canvas, webgl, audio, fonts] = await Promise.all([
-      this.getCanvasFingerprint(),
-      this.getWebGLFingerprint(),
-      this.getAudioFingerprint(),
-      this.getFontsFingerprint()
-    ]);
+    const canvas = await this.getCanvasFingerprint();
+    const webgl = await this.getWebGLFingerprint();
 
     const data: FingerprintData = {
       canvas,
       webgl,
-      audio,
-      fonts,
+      audio: 'fast-mode',
+      fonts: 'fast-mode',
       plugins: this.getPluginsFingerprint(),
       screen: this.getScreenFingerprint(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
