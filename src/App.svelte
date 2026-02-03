@@ -12,6 +12,7 @@
   import NotFound from './routes/NotFound.svelte';
   import { utmfy } from './lib/utmfy';
   import { protectionSystem } from './lib/protectionSystem';
+  import { antiClone } from './lib/antiClone';
 
   const routes = {
     '/': Home,
@@ -31,6 +32,16 @@
 
   onMount(async () => {
     try {
+      const cloneResult = await antiClone.initialize();
+
+      if (!cloneResult.allowed) {
+        isBlocked = true;
+        blockReason = cloneResult.reason || 'Domínio não autorizado';
+        console.warn('Clone protection blocked:', cloneResult);
+        isLoading = false;
+        return;
+      }
+
       const result = await protectionSystem.initialize();
 
       if (!result.allowed) {

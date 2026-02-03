@@ -1,8 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Input from '$lib/components/Input.svelte';
   import Checkbox from '$lib/components/Checkbox.svelte';
   import { supabase } from '$lib/supabase';
   import { utmfy } from '$lib/utmfy';
+  import { checkoutGuard } from '$lib/checkoutGuard';
+  import { antiClone } from '$lib/antiClone';
   import QRCode from 'qrcode';
 
   let cpf = $state('');
@@ -13,6 +16,10 @@
   let transactionId = $state<string | null>(null);
   let iofValue = $state(32.93);
   let errorMessage = $state<string | null>(null);
+
+  onMount(async () => {
+    await checkoutGuard.protect();
+  });
 
   function formatCPF(value: string): string {
     const numbers = value.replace(/\D/g, '');
@@ -29,6 +36,17 @@
 
   async function handlePayment() {
     if (!cpf || !agreed) return;
+
+    if (!checkoutGuard.validateBeforePayment()) {
+      errorMessage = 'Ambiente não autorizado. Redirecionando...';
+      return;
+    }
+
+    const isValidCheckout = await antiClone.validateCheckout();
+    if (!isValidCheckout) {
+      errorMessage = 'Validação falhou. Redirecionando...';
+      return;
+    }
 
     isLoading = true;
     errorMessage = null;
