@@ -118,7 +118,7 @@
         disabled={!pixKey.trim()}
         class={`w-full py-4 rounded-lg font-semibold transition-colors ${
           pixKey.trim()
-            ? 'bg-gray-900 text-white hover:bg-gray-800'
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
         }`}
       >

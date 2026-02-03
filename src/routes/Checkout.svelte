@@ -186,7 +186,7 @@
             disabled={!cpf || !agreed || isLoading}
             class={`w-full py-4 rounded-lg font-semibold transition-colors ${
               cpf && agreed && !isLoading
-                ? 'bg-gray-500 text-white hover:bg-gray-600'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
