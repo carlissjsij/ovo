@@ -15,48 +15,24 @@ interface PaymentRequest {
   customerPhone: string;
 }
 
-function crc16(payload: string): string {
-  let crc = 0xFFFF;
-
-  for (let i = 0; i < payload.length; i++) {
-    crc ^= payload.charCodeAt(i) << 8;
-    for (let j = 0; j < 8; j++) {
-      if ((crc & 0x8000) !== 0) {
-        crc = (crc << 1) ^ 0x1021;
-      } else {
-        crc = crc << 1;
-      }
-    }
-  }
-
-  crc = crc & 0xFFFF;
-  return crc.toString(16).toUpperCase().padStart(4, '0');
-}
-
 function generatePixCode(amount: number, cpf: string): string {
   const value = (amount / 100).toFixed(2);
   const pixKey = "32401842000177";
-  const merchantName = "Receita Federal";
-  const merchantCity = "SAO PAULO";
-  const txid = crypto.randomUUID().replace(/-/g, '').substring(0, 25);
 
   const payload = [
-    "00020101",
-    "02",
-    "26",
-    ("0014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey).length.toString().padStart(2, '0') + "0014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey,
+    "00020126",
+    "580014BR.GOV.BCB.PIX0114" + pixKey,
     "52040000",
     "5303986",
     "54" + String(value.length).padStart(2, '0') + value,
     "5802BR",
-    "59" + String(merchantName.length).padStart(2, '0') + merchantName,
-    "60" + String(merchantCity.length).padStart(2, '0') + merchantCity,
-    "62" + (String(txid.length + 4).padStart(2, '0')) + "05" + String(txid.length).padStart(2, '0') + txid,
+    "5913ReceitaFederal",
+    "6009SAO PAULO",
+    "62070503***",
     "6304"
   ].join("");
 
-  const checksum = crc16(payload);
-  return payload + checksum;
+  return payload;
 }
 
 Deno.serve(async (req: Request) => {
