@@ -1,6 +1,5 @@
 <script lang="ts">
   import { push } from 'svelte-spa-router';
-  import { onMount } from 'svelte';
   import Progress from '$lib/components/Progress.svelte';
 
   let progress = $state(0);
@@ -8,19 +7,19 @@
   let iofValue = $state(32.93);
   let balance = $state(1847.93);
 
-  onMount(() => {
-    if (status === 'loading') {
-      const interval = setInterval(() => {
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => status = 'iof', 500);
-        } else {
-          progress += 2;
-        }
-      }, 100);
+  $effect(() => {
+    if (status !== 'loading') return;
 
-      return () => clearInterval(interval);
-    }
+    const interval = setInterval(() => {
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => status = 'iof', 500);
+      } else {
+        progress += 2;
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
   });
 
   function handlePayIOF() {

@@ -23,4 +23,13 @@
   };
 </script>
 
-<Router {routes} />
+<div class="app">
+  <Router {routes} />
+</div>
+
+<style>
+  .app {
+    width: 100%;
+    height: 100%;
+  }
+</style>

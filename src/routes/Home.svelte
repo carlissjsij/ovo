@@ -15,13 +15,13 @@
   });
 
   $effect(() => {
-    if (!showWelcome && timeLeft > 0) {
-      const interval = setInterval(() => {
-        timeLeft--;
-      }, 1000);
+    if (showWelcome || timeLeft <= 0) return;
 
-      return () => clearInterval(interval);
-    }
+    const interval = setInterval(() => {
+      timeLeft--;
+    }, 1000);
+
+    return () => clearInterval(interval);
   });
 
   function formatTime(seconds: number): string {
