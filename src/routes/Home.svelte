@@ -5,24 +5,29 @@
   let showWelcome = $state(true);
   let onlineCount = $state(Math.floor(Math.random() * 500) + 1000);
   let timeLeft = $state(15 * 60);
+  let intervalId: number | undefined = $state(undefined);
 
   onMount(() => {
     const timer = setTimeout(() => {
       showWelcome = false;
+      startTimer();
     }, 2000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      if (intervalId) clearInterval(intervalId);
+    };
   });
 
-  $effect(() => {
-    if (showWelcome || timeLeft <= 0) return;
-
-    const interval = setInterval(() => {
-      timeLeft--;
-    }, 1000);
-
-    return () => clearInterval(interval);
-  });
+  function startTimer() {
+    intervalId = setInterval(() => {
+      if (timeLeft > 0) {
+        timeLeft--;
+      } else {
+        if (intervalId) clearInterval(intervalId);
+      }
+    }, 1000) as unknown as number;
+  }
 
   function formatTime(seconds: number): string {
     const mins = Math.floor(seconds / 60);

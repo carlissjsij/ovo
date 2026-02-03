@@ -1,5 +1,6 @@
 <script lang="ts">
   import { push } from 'svelte-spa-router';
+  import { onMount } from 'svelte';
   import Progress from '$lib/components/Progress.svelte';
 
   let progress = $state(0);
@@ -7,9 +8,7 @@
   let iofValue = $state(32.93);
   let balance = $state(1847.93);
 
-  $effect(() => {
-    if (status !== 'loading') return;
-
+  onMount(() => {
     const interval = setInterval(() => {
       if (progress >= 100) {
         clearInterval(interval);
