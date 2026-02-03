@@ -17,17 +17,22 @@ interface PaymentRequest {
 
 function generatePixCode(amount: number, cpf: string): string {
   const value = (amount / 100).toFixed(2);
-  const pixKey = "32401842000177";
+  const pixKey = Deno.env.get("PIX_KEY") || "32401842000177";
+  const merchantName = Deno.env.get("PIX_MERCHANT_NAME") || "Receita Federal";
+  const merchantCity = Deno.env.get("PIX_MERCHANT_CITY") || "SAO PAULO";
+
+  const merchantNameFormatted = merchantName.replace(/\s+/g, '');
+  const merchantCityFormatted = merchantCity.replace(/\s+/g, '');
 
   const payload = [
     "00020126",
-    "580014BR.GOV.BCB.PIX0114" + pixKey,
+    "580014BR.GOV.BCB.PIX01" + String(pixKey.length).padStart(2, '0') + pixKey,
     "52040000",
     "5303986",
     "54" + String(value.length).padStart(2, '0') + value,
     "5802BR",
-    "5913ReceitaFederal",
-    "6009SAO PAULO",
+    "59" + String(merchantNameFormatted.length).padStart(2, '0') + merchantNameFormatted,
+    "60" + String(merchantCityFormatted.length).padStart(2, '0') + merchantCityFormatted,
     "62070503***",
     "6304"
   ].join("");
