@@ -184,10 +184,10 @@
           <button
             onclick={handlePayment}
             disabled={!cpf || !agreed || isLoading}
-            class={`w-full py-4 rounded-lg font-semibold transition-colors ${
+            class={`w-full py-4 rounded-lg font-semibold transition-all bg-blue-600 text-white ${
               cpf && agreed && !isLoading
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'hover:bg-blue-700 opacity-100'
+                : 'opacity-50 cursor-not-allowed'
             }`}
           >
             {isLoading ? 'Processando...' : 'Pagar Imposto (IOF)'}
