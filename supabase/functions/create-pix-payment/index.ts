@@ -15,7 +15,10 @@ interface PaymentRequest {
 }
 
 Deno.serve(async (req: Request) => {
+  console.log('[PIX Payment] Function called - Method:', req.method);
+
   if (req.method === "OPTIONS") {
+    console.log('[PIX Payment] Handling OPTIONS preflight');
     return new Response(null, {
       status: 200,
       headers: corsHeaders,
@@ -103,19 +106,43 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    console.log('[PIX Payment] Calling Payzor API with payload:', JSON.stringify(payzorPayload, null, 2));
+    console.log('[PIX Payment] Calling Payzor API...');
 
-    const payzorResponse = await fetch("https://api.payzor.com.br/api/v1/transactions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${credentials}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payzorPayload),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    let payzorResponse;
+    try {
+      payzorResponse = await fetch("https://api.payzor.com.br/api/v1/transactions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${credentials}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payzorPayload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('[PIX Payment] Fetch error:', fetchError);
+
+      return new Response(
+        JSON.stringify({
+          error: "Erro ao conectar com gateway de pagamento",
+          details: "Não foi possível conectar com o Payzor. Verifique se as credenciais estão corretas."
+        }),
+        {
+          status: 503,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
     console.log('[PIX Payment] Payzor response status:', payzorResponse.status);
-    console.log('[PIX Payment] Payzor response headers:', Object.fromEntries(payzorResponse.headers.entries()));
 
     if (!payzorResponse.ok) {
       const errorData = await payzorResponse.text();

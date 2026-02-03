@@ -35,6 +35,9 @@
 
     try {
       console.log('[Checkout] Creating PIX payment...');
+      console.log('[Checkout] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
+      console.log('[Checkout] Function name: create-pix-payment');
+
       const response = await supabase.functions.invoke('create-pix-payment', {
         body: {
           amount: Math.round(iofValue * 100),
@@ -50,11 +53,16 @@
       if (response.error) {
         console.error('[Checkout] Edge function error:', response.error);
         console.error('[Checkout] Error data:', response.data);
+        console.error('[Checkout] Error details:', {
+          message: response.error.message,
+          context: response.error.context,
+          name: response.error.name,
+        });
 
         if (response.data?.error) {
           errorMessage = response.data.details || response.data.error;
         } else {
-          errorMessage = 'Erro ao chamar função de pagamento: ' + (response.error.message || 'Erro desconhecido');
+          errorMessage = 'Erro ao chamar função de pagamento: ' + (response.error.message || JSON.stringify(response.error));
         }
 
         isLoading = false;
