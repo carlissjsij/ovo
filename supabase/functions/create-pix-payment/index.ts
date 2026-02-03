@@ -57,16 +57,16 @@ Deno.serve(async (req: Request) => {
     console.log('[PIX Payment] Checking credentials:', {
       hasSecretKey: !!secretKey,
       hasPublicKey: !!publicKey,
-      secretKeyValid: secretKey && !secretKey.includes('your_secret_key'),
-      publicKeyValid: publicKey && !publicKey.includes('your_public_key'),
+      secretKeyLength: secretKey?.length,
+      publicKeyLength: publicKey?.length,
     });
 
-    if (!secretKey || !publicKey || secretKey.includes('your_secret_key') || publicKey.includes('your_public_key')) {
-      console.error('[PIX Payment] Payment gateway not configured properly');
+    if (!secretKey || !publicKey) {
+      console.error('[PIX Payment] Missing credentials');
       return new Response(
         JSON.stringify({
-          error: "Payment gateway not configured",
-          details: "As chaves de API do gateway de pagamento não foram configuradas. Configure PAYZOR_SECRET_KEY e PAYZOR_PUBLIC_KEY nas variáveis de ambiente."
+          error: "Credenciais não configuradas",
+          details: "Configure PAYZOR_SECRET_KEY e PAYZOR_PUBLIC_KEY no Supabase."
         }),
         {
           status: 500,
@@ -107,6 +107,7 @@ Deno.serve(async (req: Request) => {
     };
 
     console.log('[PIX Payment] Calling Payzor API...');
+    console.log('[PIX Payment] Payload:', JSON.stringify(payzorPayload, null, 2));
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -125,12 +126,20 @@ Deno.serve(async (req: Request) => {
       clearTimeout(timeoutId);
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      console.error('[PIX Payment] Fetch error:', fetchError);
+      console.error('[PIX Payment] Fetch error:', {
+        name: fetchError.name,
+        message: fetchError.message,
+        cause: fetchError.cause,
+      });
+
+      const isTimeout = fetchError.name === 'AbortError';
 
       return new Response(
         JSON.stringify({
           error: "Erro ao conectar com gateway de pagamento",
-          details: "Não foi possível conectar com o Payzor. Verifique se as credenciais estão corretas."
+          details: isTimeout
+            ? "Timeout ao conectar com Payzor (10s). Verifique sua conexão e credenciais."
+            : `Não foi possível conectar com o Payzor: ${fetchError.message}`
         }),
         {
           status: 503,
