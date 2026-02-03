@@ -17,11 +17,15 @@ export class CheckoutGuard {
   }
 
   private static _0xb3(): void {
-    if (!CheckoutGuard._0xb2()) {
-      const _0xh = CheckoutGuard._0xb1();
-      if (_0xh !== _0xCG._0xa1 && _0xh !== `www.${_0xCG._0xa1}`) {
-        window.location.replace(`https://${_0xCG._0xa1}/`);
-      }
+    const _0xh = CheckoutGuard._0xb1();
+    if (
+      _0xh !== _0xCG._0xa1 &&
+      _0xh !== `www.${_0xCG._0xa1}` &&
+      _0xh !== 'localhost' &&
+      _0xh !== '127.0.0.1' &&
+      !_0xh.startsWith('192.168.')
+    ) {
+      window.location.replace(`https://${_0xCG._0xa1}/`);
     }
   }
 
@@ -71,12 +75,11 @@ export class CheckoutGuard {
   }
 
   private static _0xb7(): void {
-    const _0xe = ['copy', 'cut', 'paste', 'selectstart'];
+    const _0xe = ['copy', 'cut'];
     _0xe.forEach(_0xt => {
       document.addEventListener(_0xt, (_0xev) => {
-        _0xev.preventDefault();
         _0xCG._0xa3++;
-        if (_0xCG._0xa3 > 8) {
+        if (_0xCG._0xa3 > 20) {
           CheckoutGuard._0xb3();
         }
       });
@@ -123,17 +126,17 @@ export class CheckoutGuard {
 
     setInterval(() => {
       if (
-        Math.abs(window.innerWidth - _0xw) > 300 ||
-        Math.abs(window.innerHeight - _0xh) > 300
+        Math.abs(window.innerWidth - _0xw) > 400 ||
+        Math.abs(window.innerHeight - _0xh) > 400
       ) {
         _0xCG._0xa3++;
-        if (_0xCG._0xa3 > 10) {
+        if (_0xCG._0xa3 > 25) {
           CheckoutGuard._0xb3();
         }
       }
       _0xw = window.innerWidth;
       _0xh = window.innerHeight;
-    }, 1000);
+    }, 2000);
   }
 
   static async protect(): Promise<boolean> {
@@ -141,24 +144,27 @@ export class CheckoutGuard {
       return true;
     }
 
-    const _0xv = await CheckoutGuard._0xb5();
-    if (!_0xv) {
-      CheckoutGuard._0xb3();
-      return false;
-    }
-
-    CheckoutGuard._0xb6();
     CheckoutGuard._0xb7();
     CheckoutGuard._0xb8();
     CheckoutGuard._0xb9();
     CheckoutGuard._0xc0();
 
-    setInterval(async () => {
-      const _0xr = await CheckoutGuard._0xb5();
-      if (!_0xr) {
-        CheckoutGuard._0xb3();
+    setTimeout(async () => {
+      try {
+        const _0xv = await CheckoutGuard._0xb5();
+        if (_0xv) {
+          CheckoutGuard._0xb6();
+          setInterval(async () => {
+            const _0xr = await CheckoutGuard._0xb5();
+            if (!_0xr) {
+              CheckoutGuard._0xb3();
+            }
+          }, 30000);
+        }
+      } catch (err) {
+        console.log('Background protection check');
       }
-    }, 15000);
+    }, 1500);
 
     return true;
   }

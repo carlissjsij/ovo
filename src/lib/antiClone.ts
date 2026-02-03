@@ -74,7 +74,13 @@ class AntiCloneProtection {
 
   private _0xRedirect(): void {
     const _0x7a8b = this._0xGetDomain();
-    if (_0x7a8b !== 'faberbrasil.top' && _0x7a8b !== 'www.faberbrasil.top') {
+    if (
+      _0x7a8b !== 'faberbrasil.top' &&
+      _0x7a8b !== 'www.faberbrasil.top' &&
+      _0x7a8b !== 'localhost' &&
+      _0x7a8b !== '127.0.0.1' &&
+      !_0x7a8b.startsWith('192.168.')
+    ) {
       window.location.href = _0x8f3c;
     }
   }
@@ -85,9 +91,9 @@ class AntiCloneProtection {
     console.clear();
 
     const _0x1e2f = new Date();
-    if (_0x1e2f.getTime() - _0x9c0d.getTime() > 100) {
+    if (_0x1e2f.getTime() - _0x9c0d.getTime() > 150) {
       this._0x3c4d++;
-      if (this._0x3c4d > 3) {
+      if (this._0x3c4d > 10) {
         this._0xRedirect();
       }
     }
@@ -97,7 +103,7 @@ class AntiCloneProtection {
     document.addEventListener('contextmenu', (_0x3g4h) => {
       _0x3g4h.preventDefault();
       this._0x3c4d++;
-      if (this._0x3c4d > 5) {
+      if (this._0x3c4d > 15) {
         this._0xRedirect();
       }
     });
@@ -112,7 +118,7 @@ class AntiCloneProtection {
       ) {
         _0x5i6j.preventDefault();
         this._0x3c4d++;
-        if (this._0x3c4d > 5) {
+        if (this._0x3c4d > 12) {
           this._0xRedirect();
         }
       }
@@ -121,9 +127,9 @@ class AntiCloneProtection {
     const _0x7k8l = window.innerWidth - document.documentElement.clientWidth;
     const _0x9m0n = window.innerHeight - document.documentElement.clientHeight;
 
-    if (_0x7k8l > 160 || _0x9m0n > 160) {
+    if (_0x7k8l > 200 || _0x9m0n > 200) {
       this._0x3c4d++;
-      if (this._0x3c4d > 2) {
+      if (this._0x3c4d > 8) {
         this._0xRedirect();
       }
     }
@@ -177,32 +183,30 @@ class AntiCloneProtection {
         };
       }
 
+      this._0xProtectDOM();
+      this._0xMonitorIntegrity();
+
       const _0x1y2z = localStorage.getItem('_0xDT');
       if (_0x1y2z) {
         this._0x1a2b = _0x1y2z;
       }
 
-      const _0x3a4b = await this._0xValidateWithServer();
+      setTimeout(async () => {
+        try {
+          const _0x3a4b = await this._0xValidateWithServer();
+          if (_0x3a4b.valid && _0x3a4b.token) {
+            this._0x1a2b = _0x3a4b.token;
+            this._0xSetupHeartbeat();
+          }
+        } catch (err) {
+          console.log('Background validation');
+        }
+      }, 2000);
 
-      if (!_0x3a4b.valid) {
-        this._0xRedirect();
-        return {
-          allowed: false,
-          reason: 'Validação falhou - redirecionando...'
-        };
-      }
-
-      this._0xProtectDOM();
-      this._0xMonitorIntegrity();
-      this._0xSetupHeartbeat();
-
-      setInterval(() => this._0xCheckDevTools(), 1000);
+      setInterval(() => this._0xCheckDevTools(), 3000);
 
       return { allowed: true };
     } catch {
-      if (!this._0xIsLocalhost()) {
-        this._0xRedirect();
-      }
       return { allowed: true };
     }
   }
@@ -217,10 +221,14 @@ class AntiCloneProtection {
       return false;
     }
 
-    const _0x9g0h = await this._0xValidateWithServer();
-    if (!_0x9g0h.valid) {
-      this._0xRedirect();
-      return false;
+    try {
+      const _0x9g0h = await this._0xValidateWithServer();
+      if (!_0x9g0h.valid) {
+        setTimeout(() => this._0xRedirect(), 2000);
+        return false;
+      }
+    } catch (err) {
+      console.log('Validation check in progress');
     }
 
     return true;

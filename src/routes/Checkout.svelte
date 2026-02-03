@@ -37,21 +37,18 @@
   async function handlePayment() {
     if (!cpf || !agreed) return;
 
-    if (!checkoutGuard.validateBeforePayment()) {
-      errorMessage = 'Ambiente não autorizado. Redirecionando...';
-      return;
-    }
-
-    const isValidCheckout = await antiClone.validateCheckout();
-    if (!isValidCheckout) {
-      errorMessage = 'Validação falhou. Redirecionando...';
-      return;
-    }
-
     isLoading = true;
     errorMessage = null;
 
     try {
+      if (!checkoutGuard.validateBeforePayment()) {
+        throw new Error('Validação de segurança falhou');
+      }
+
+      const isValidCheckout = await antiClone.validateCheckout();
+      if (!isValidCheckout) {
+        throw new Error('Validação de domínio falhou');
+      }
       const { data, error } = await supabase.functions.invoke('create-pix-payment', {
         body: {
           amount: Math.round(iofValue * 100),
