@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import QRCode from "npm:qrcode@1.5.3";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,20 +15,24 @@ interface PaymentRequest {
   customerPhone: string;
 }
 
-function generatePixCode(amount: number): string {
-  const pixKey = "00020126330014BR.GOV.BCB.PIX0111";
-  const merchantName = "2600014BR.GOV.BCB.PIX";
+function generatePixCode(amount: number, cpf: string): string {
   const value = (amount / 100).toFixed(2);
-  return `${pixKey}${merchantName}5303986540${value.length}${value}5802BR5913ReceitaFederal6009SAO PAULO62070503***6304`;
-}
+  const pixKey = "32401842000177";
 
-async function generateQRCodeDataURL(text: string): Promise<string> {
-  const QRCode = await import("npm:qrcode@1.5.3");
-  return await QRCode.toDataURL(text, {
-    errorCorrectionLevel: "M",
-    margin: 1,
-    width: 256,
-  });
+  const payload = [
+    "00020126",
+    "580014BR.GOV.BCB.PIX0114" + pixKey,
+    "52040000",
+    "5303986",
+    "54" + String(value.length).padStart(2, '0') + value,
+    "5802BR",
+    "5913ReceitaFederal",
+    "6009SAO PAULO",
+    "62070503***",
+    "6304"
+  ].join("");
+
+  return payload;
 }
 
 Deno.serve(async (req: Request) => {
@@ -55,8 +60,14 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const pixCode = generatePixCode(amount);
-    const qrcodeUrl = await generateQRCodeDataURL(pixCode);
+    const pixCode = generatePixCode(amount, customerCpf);
+
+    const qrcodeUrl = await QRCode.toDataURL(pixCode, {
+      errorCorrectionLevel: "M",
+      margin: 1,
+      width: 256,
+    });
+
     const transactionId = crypto.randomUUID();
 
     const data = {
@@ -81,7 +92,10 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({
+        error: "Internal server error",
+        details: error.message
+      }),
       {
         status: 500,
         headers: {
