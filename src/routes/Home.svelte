@@ -43,7 +43,8 @@
 {#if showWelcome}
   <div class="min-h-screen bg-black flex flex-col items-center justify-center">
     <img src="/assets/tiktok-logo-white.svg" alt="TikTok" class="w-32 h-32 mb-6" />
-    <h1 class="text-white text-2xl font-semibold">Bem-vindo ao TikTok</h1>
+    <h1 class="text-white text-2xl font-semibold mb-8">Bem-vindo ao TikTok</h1>
+    <div class="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
   </div>
 {:else}
   <div class="min-h-screen bg-black flex flex-col">
