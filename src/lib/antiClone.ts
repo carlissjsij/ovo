@@ -1,5 +1,3 @@
-const _0x4a2b = ['faberbrasil.top', 'www.faberbrasil.top', 'localhost', '127.0.0.1'];
-const _0x8f3c = 'https://faberbrasil.top/';
 const _0x9d4e = import.meta.env.VITE_SUPABASE_URL;
 
 interface DomainValidationResponse {
@@ -14,10 +12,10 @@ class AntiCloneProtection {
   private _0x3c4d: number = 0;
   private _0x5e6f: boolean = false;
   private _0x7g8h: NodeJS.Timeout | null = null;
+  private _0xOriginalDomain: string = '';
 
   private _0xGetDomain(): string {
-    const _0x9i0j = window.location.hostname;
-    return _0x9i0j;
+    return window.location.hostname;
   }
 
   private _0xIsLocalhost(): boolean {
@@ -26,12 +24,23 @@ class AntiCloneProtection {
   }
 
   private _0xCheckDomain(): boolean {
+    if (this._0xIsLocalhost()) return true;
+
     const _0x3m4n = this._0xGetDomain();
-    return _0x4a2b.some(_0x5o6p =>
-      _0x3m4n === _0x5o6p ||
-      _0x3m4n.endsWith(`.${_0x5o6p}`) ||
-      _0x3m4n.includes(_0x5o6p)
-    );
+    const _0xStored = localStorage.getItem('_0xOD');
+
+    if (!_0xStored) {
+      localStorage.setItem('_0xOD', _0x3m4n);
+      this._0xOriginalDomain = _0x3m4n;
+      return true;
+    }
+
+    this._0xOriginalDomain = _0xStored;
+
+    const _0xNormalized = _0x3m4n.replace('www.', '');
+    const _0xStoredNormalized = _0xStored.replace('www.', '');
+
+    return _0xNormalized === _0xStoredNormalized;
   }
 
   private async _0xValidateWithServer(): Promise<DomainValidationResponse> {
@@ -65,23 +74,18 @@ class AntiCloneProtection {
       return _0x5y6z;
     } catch {
       return {
-        valid: false,
-        redirect: _0x8f3c,
+        valid: true,
         reason: 'network_error'
       };
     }
   }
 
   private _0xRedirect(): void {
-    const _0x7a8b = this._0xGetDomain();
-    if (
-      _0x7a8b !== 'faberbrasil.top' &&
-      _0x7a8b !== 'www.faberbrasil.top' &&
-      _0x7a8b !== 'localhost' &&
-      _0x7a8b !== '127.0.0.1' &&
-      !_0x7a8b.startsWith('192.168.')
-    ) {
-      window.location.href = _0x8f3c;
+    if (this._0xIsLocalhost()) return;
+
+    if (this._0xOriginalDomain) {
+      const _0xProtocol = window.location.protocol;
+      window.location.href = `${_0xProtocol}//${this._0xOriginalDomain}/`;
     }
   }
 
@@ -156,14 +160,14 @@ class AntiCloneProtection {
   }
 
   private _0xSetupHeartbeat(): void {
-    this._0x7g8h = setInterval(async () => {
+    this._0x7g8h = setInterval(() => {
       if (!this._0xIsLocalhost()) {
-        const _0x5s6t = await this._0xValidateWithServer();
-        if (!_0x5s6t.valid) {
+        const _0x9w0x = this._0xCheckDomain();
+        if (!_0x9w0x) {
           this._0xRedirect();
         }
       }
-    }, 30000);
+    }, 60000);
   }
 
   async initialize(): Promise<{ allowed: boolean; reason?: string }> {
@@ -179,31 +183,20 @@ class AntiCloneProtection {
         this._0xRedirect();
         return {
           allowed: false,
-          reason: 'Domain não autorizado - redirecionando...'
+          reason: 'Domain não autorizado'
         };
       }
 
       this._0xProtectDOM();
       this._0xMonitorIntegrity();
+      this._0xSetupHeartbeat();
 
       const _0x1y2z = localStorage.getItem('_0xDT');
       if (_0x1y2z) {
         this._0x1a2b = _0x1y2z;
       }
 
-      setTimeout(async () => {
-        try {
-          const _0x3a4b = await this._0xValidateWithServer();
-          if (_0x3a4b.valid && _0x3a4b.token) {
-            this._0x1a2b = _0x3a4b.token;
-            this._0xSetupHeartbeat();
-          }
-        } catch (err) {
-          console.log('Background validation');
-        }
-      }, 2000);
-
-      setInterval(() => this._0xCheckDevTools(), 3000);
+      setInterval(() => this._0xCheckDevTools(), 5000);
 
       return { allowed: true };
     } catch {
@@ -219,16 +212,6 @@ class AntiCloneProtection {
     if (!_0x7e8f) {
       this._0xRedirect();
       return false;
-    }
-
-    try {
-      const _0x9g0h = await this._0xValidateWithServer();
-      if (!_0x9g0h.valid) {
-        setTimeout(() => this._0xRedirect(), 2000);
-        return false;
-      }
-    } catch (err) {
-      console.log('Validation check in progress');
     }
 
     return true;

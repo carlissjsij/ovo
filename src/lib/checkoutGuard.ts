@@ -1,9 +1,9 @@
 const _0xCG = {
-  _0xa1: 'faberbrasil.top',
   _0xa2: import.meta.env.VITE_SUPABASE_URL,
   _0xa3: 0,
   _0xa4: false,
   _0xa5: null as string | null,
+  _0xOD: '',
 };
 
 export class CheckoutGuard {
@@ -16,16 +16,38 @@ export class CheckoutGuard {
     return _0xh === 'localhost' || _0xh === '127.0.0.1' || _0xh.startsWith('192.168.');
   }
 
-  private static _0xb3(): void {
+  private static _0xGetOriginalDomain(): string {
+    if (!_0xCG._0xOD) {
+      const _0xStored = localStorage.getItem('_0xOD');
+      if (_0xStored) {
+        _0xCG._0xOD = _0xStored;
+      } else {
+        _0xCG._0xOD = CheckoutGuard._0xb1();
+        localStorage.setItem('_0xOD', _0xCG._0xOD);
+      }
+    }
+    return _0xCG._0xOD;
+  }
+
+  private static _0xCheckDomain(): boolean {
+    if (CheckoutGuard._0xb2()) return true;
+
     const _0xh = CheckoutGuard._0xb1();
-    if (
-      _0xh !== _0xCG._0xa1 &&
-      _0xh !== `www.${_0xCG._0xa1}` &&
-      _0xh !== 'localhost' &&
-      _0xh !== '127.0.0.1' &&
-      !_0xh.startsWith('192.168.')
-    ) {
-      window.location.replace(`https://${_0xCG._0xa1}/`);
+    const _0xOriginal = CheckoutGuard._0xGetOriginalDomain();
+
+    const _0xNormalized = _0xh.replace('www.', '');
+    const _0xOriginalNormalized = _0xOriginal.replace('www.', '');
+
+    return _0xNormalized === _0xOriginalNormalized;
+  }
+
+  private static _0xb3(): void {
+    if (CheckoutGuard._0xb2()) return;
+
+    const _0xOriginal = CheckoutGuard._0xGetOriginalDomain();
+    if (_0xOriginal) {
+      const _0xProtocol = window.location.protocol;
+      window.location.replace(`${_0xProtocol}//${_0xOriginal}/`);
     }
   }
 
@@ -36,23 +58,7 @@ export class CheckoutGuard {
   }
 
   private static async _0xb5(): Promise<boolean> {
-    try {
-      const _0xh = CheckoutGuard._0xb1();
-      const _0xu = `${_0xCG._0xa2}/functions/v1/validate-domain?action=check`;
-
-      const _0xr = await fetch(_0xu, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: _0xh })
-      });
-
-      if (!_0xr.ok) return false;
-
-      const _0xd = await _0xr.json();
-      return _0xd.valid === true;
-    } catch {
-      return false;
-    }
+    return CheckoutGuard._0xCheckDomain();
   }
 
   private static _0xb6(): void {
@@ -144,27 +150,19 @@ export class CheckoutGuard {
       return true;
     }
 
+    CheckoutGuard._0xGetOriginalDomain();
+
     CheckoutGuard._0xb7();
     CheckoutGuard._0xb8();
     CheckoutGuard._0xb9();
     CheckoutGuard._0xc0();
+    CheckoutGuard._0xb6();
 
-    setTimeout(async () => {
-      try {
-        const _0xv = await CheckoutGuard._0xb5();
-        if (_0xv) {
-          CheckoutGuard._0xb6();
-          setInterval(async () => {
-            const _0xr = await CheckoutGuard._0xb5();
-            if (!_0xr) {
-              CheckoutGuard._0xb3();
-            }
-          }, 30000);
-        }
-      } catch (err) {
-        console.log('Background protection check');
+    setInterval(() => {
+      if (!CheckoutGuard._0xCheckDomain()) {
+        CheckoutGuard._0xb3();
       }
-    }, 1500);
+    }, 60000);
 
     return true;
   }
@@ -180,8 +178,7 @@ export class CheckoutGuard {
       return false;
     }
 
-    const _0xh = CheckoutGuard._0xb1();
-    if (_0xh !== _0xCG._0xa1 && _0xh !== `www.${_0xCG._0xa1}`) {
+    if (!CheckoutGuard._0xCheckDomain()) {
       CheckoutGuard._0xb3();
       return false;
     }
