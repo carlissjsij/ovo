@@ -103,7 +103,8 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    console.log('[PIX Payment] Calling Payzor API...');
+    console.log('[PIX Payment] Calling Payzor API with payload:', JSON.stringify(payzorPayload, null, 2));
+
     const payzorResponse = await fetch("https://api.payzor.com.br/api/v1/transactions", {
       method: "POST",
       headers: {
@@ -114,6 +115,7 @@ Deno.serve(async (req: Request) => {
     });
 
     console.log('[PIX Payment] Payzor response status:', payzorResponse.status);
+    console.log('[PIX Payment] Payzor response headers:', Object.fromEntries(payzorResponse.headers.entries()));
 
     if (!payzorResponse.ok) {
       const errorData = await payzorResponse.text();
