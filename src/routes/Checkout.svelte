@@ -35,49 +35,46 @@
 
     try {
       console.log('[Checkout] Creating PIX payment...');
-      console.log('[Checkout] Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-      console.log('[Checkout] Function name: create-pix-payment');
 
-      const response = await supabase.functions.invoke('create-pix-payment', {
-        body: {
-          amount: Math.round(iofValue * 100),
-          customerCpf: cpf.replace(/\D/g, ''),
-          customerName: 'Cliente',
-          customerEmail: 'cliente@email.com',
-          customerPhone: '11999999999',
-        },
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-pix-payment`;
+      const headers = {
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      };
+
+      const requestBody = {
+        amount: Math.round(iofValue * 100),
+        customerCpf: cpf.replace(/\D/g, ''),
+        customerName: 'Cliente',
+        customerEmail: 'cliente@email.com',
+        customerPhone: '11999999999',
+      };
+
+      console.log('[Checkout] Calling Edge Function:', apiUrl);
+      console.log('[Checkout] Request body:', requestBody);
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
       });
 
-      console.log('[Checkout] Full response:', JSON.stringify(response, null, 2));
+      console.log('[Checkout] Response status:', response.status);
 
-      if (response.error) {
-        console.error('[Checkout] Edge function error:', response.error);
-        console.error('[Checkout] Error data:', response.data);
-        console.error('[Checkout] Error details:', {
-          message: response.error.message,
-          context: response.error.context,
-          name: response.error.name,
-        });
+      const data = await response.json();
+      console.log('[Checkout] Response data:', data);
 
-        if (response.data?.error) {
-          errorMessage = response.data.details || response.data.error;
-        } else {
-          errorMessage = 'Erro ao chamar função de pagamento: ' + (response.error.message || JSON.stringify(response.error));
-        }
+      if (!response.ok) {
+        console.error('[Checkout] Error response:', data);
 
-        isLoading = false;
-        return;
-      }
-
-      const { data, error } = response;
-
-      if (data?.error) {
-        console.error('[Checkout] Payment gateway error:', data);
         if (data.error === 'Payment gateway not configured') {
           errorMessage = 'Gateway de pagamento não configurado. Entre em contato com o suporte.';
+        } else if (data.error === 'Erro ao conectar com gateway de pagamento') {
+          errorMessage = 'Não foi possível conectar com o gateway de pagamento. Verifique as credenciais.';
         } else {
           errorMessage = data.details || data.error || 'Erro ao processar pagamento.';
         }
+
         isLoading = false;
         return;
       }
