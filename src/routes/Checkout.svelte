@@ -47,13 +47,9 @@
       if (error) throw error;
 
       if (data?.pix) {
+        qrCodeUrl = data.pix.qrcodeUrl;
         pixCode = data.pix.qrcode;
         transactionId = data.id;
-
-        qrCodeUrl = await QRCode.toDataURL(data.pix.qrcode, {
-          width: 256,
-          margin: 2,
-        });
 
         const utmParams = utmfy.getParams();
         const now = new Date();

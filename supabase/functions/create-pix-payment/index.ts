@@ -83,8 +83,6 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    console.log("Sending to Payzor:", JSON.stringify(payzorPayload));
-
     const payzorResponse = await fetch("https://api.payzor.com.br/api/v1/transactions", {
       method: "POST",
       headers: {
@@ -94,28 +92,13 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify(payzorPayload),
     });
 
-    const responseText = await payzorResponse.text();
-    console.log("Payzor Response Status:", payzorResponse.status);
-    console.log("Payzor Response Body:", responseText);
-
     if (!payzorResponse.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "Payment gateway error",
-          status: payzorResponse.status,
-          details: responseText
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const errorData = await payzorResponse.text();
+      console.error("Payzor API Error:", errorData);
+      throw new Error(`Payzor API returned ${payzorResponse.status}`);
     }
 
-    const payzorData = JSON.parse(responseText);
+    const payzorData = await payzorResponse.json();
 
     const data = {
       id: payzorData.id,
