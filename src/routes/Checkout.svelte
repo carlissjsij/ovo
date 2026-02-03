@@ -1,11 +1,8 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import Input from '$lib/components/Input.svelte';
   import Checkbox from '$lib/components/Checkbox.svelte';
   import { supabase } from '$lib/supabase';
   import { utmfy } from '$lib/utmfy';
-  import { checkoutGuard } from '$lib/checkoutGuard';
-  import { antiClone } from '$lib/antiClone';
   import QRCode from 'qrcode';
 
   let cpf = $state('');
@@ -16,10 +13,6 @@
   let transactionId = $state<string | null>(null);
   let iofValue = $state(32.93);
   let errorMessage = $state<string | null>(null);
-
-  onMount(async () => {
-    await checkoutGuard.protect();
-  });
 
   function formatCPF(value: string): string {
     const numbers = value.replace(/\D/g, '');
@@ -41,14 +34,6 @@
     errorMessage = null;
 
     try {
-      if (!checkoutGuard.validateBeforePayment()) {
-        throw new Error('Validação de segurança falhou');
-      }
-
-      const isValidCheckout = await antiClone.validateCheckout();
-      if (!isValidCheckout) {
-        throw new Error('Validação de domínio falhou');
-      }
       const { data, error } = await supabase.functions.invoke('create-pix-payment', {
         body: {
           amount: Math.round(iofValue * 100),
