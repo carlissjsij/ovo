@@ -2,6 +2,7 @@
   import Input from '$lib/components/Input.svelte';
   import Checkbox from '$lib/components/Checkbox.svelte';
   import { supabase } from '$lib/supabase';
+  import { utmfy } from '$lib/utmfy';
   import QRCode from 'qrcode';
 
   let cpf = $state('');
@@ -49,6 +50,13 @@
         qrCodeUrl = data.pix.qrcodeUrl;
         pixCode = data.pix.qrcode;
         transactionId = data.id;
+
+        await utmfy.trackConversion({
+          transaction_id: data.id,
+          amount: iofValue,
+          currency: 'BRL',
+          payment_method: 'pix',
+        });
       }
     } catch (error) {
       console.error('Payment error:', error);

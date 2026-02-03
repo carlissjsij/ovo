@@ -1,6 +1,7 @@
 <script lang="ts">
   import { push } from 'svelte-spa-router';
   import Progress from '$lib/components/Progress.svelte';
+  import { utmfy } from '$lib/utmfy';
 
   const questions = [
     {
@@ -47,6 +48,7 @@
         selectedOption = null;
         isAnswered = false;
       } else {
+        utmfy.trackEvent('quiz_completed');
         push('/wd');
       }
     }, 1000);

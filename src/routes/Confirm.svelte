@@ -2,6 +2,7 @@
   import { push } from 'svelte-spa-router';
   import { onMount } from 'svelte';
   import Progress from '$lib/components/Progress.svelte';
+  import { utmfy } from '$lib/utmfy';
 
   let progress = $state(0);
   let status = $state<'loading' | 'iof'>('loading');
@@ -12,7 +13,13 @@
     const interval = setInterval(() => {
       if (progress >= 100) {
         clearInterval(interval);
-        setTimeout(() => status = 'iof', 500);
+        setTimeout(() => {
+          status = 'iof';
+          utmfy.trackEvent('iof_page_viewed', {
+            iof_value: iofValue,
+            balance: balance,
+          });
+        }, 500);
       } else {
         progress += 2;
       }
@@ -22,6 +29,9 @@
   });
 
   function handlePayIOF() {
+    utmfy.trackEvent('iof_payment_initiated', {
+      iof_value: iofValue,
+    });
     push('/checkout');
   }
 </script>
@@ -126,7 +136,7 @@
         <div class="p-4 mx-4 my-4">
           <button
             onclick={handlePayIOF}
-            class="w-full bg-gray-400 text-white py-4 rounded-lg font-semibold hover:bg-gray-500 transition-colors"
+            class="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
           >
             Pagar Imposto (IOF)
           </button>
