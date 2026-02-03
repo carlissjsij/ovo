@@ -35,7 +35,7 @@
 
     try {
       console.log('[Checkout] Creating PIX payment...');
-      const { data, error } = await supabase.functions.invoke('create-pix-payment', {
+      const response = await supabase.functions.invoke('create-pix-payment', {
         body: {
           amount: Math.round(iofValue * 100),
           customerCpf: cpf.replace(/\D/g, ''),
@@ -45,14 +45,23 @@
         },
       });
 
-      console.log('[Checkout] Full response:', JSON.stringify({ data, error }, null, 2));
+      console.log('[Checkout] Full response:', JSON.stringify(response, null, 2));
 
-      if (error) {
-        console.error('[Checkout] Edge function error:', error);
-        errorMessage = 'Erro ao chamar função de pagamento: ' + (error.message || 'Erro desconhecido');
+      if (response.error) {
+        console.error('[Checkout] Edge function error:', response.error);
+        console.error('[Checkout] Error data:', response.data);
+
+        if (response.data?.error) {
+          errorMessage = response.data.details || response.data.error;
+        } else {
+          errorMessage = 'Erro ao chamar função de pagamento: ' + (response.error.message || 'Erro desconhecido');
+        }
+
         isLoading = false;
         return;
       }
+
+      const { data, error } = response;
 
       if (data?.error) {
         console.error('[Checkout] Payment gateway error:', data);

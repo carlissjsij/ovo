@@ -119,12 +119,32 @@ Deno.serve(async (req: Request) => {
 
     if (!payzorResponse.ok) {
       const errorData = await payzorResponse.text();
-      console.error('[PIX Payment] Payzor API Error:', errorData);
-      throw new Error(`Payzor API returned ${payzorResponse.status}: ${errorData}`);
+      console.error('[PIX Payment] Payzor API Error:', {
+        status: payzorResponse.status,
+        statusText: payzorResponse.statusText,
+        body: errorData
+      });
+
+      return new Response(
+        JSON.stringify({
+          error: `Erro na API Payzor (${payzorResponse.status})`,
+          details: errorData || payzorResponse.statusText
+        }),
+        {
+          status: payzorResponse.status,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     const payzorData = await payzorResponse.json();
-    console.log('[PIX Payment] Payment created successfully:', payzorData.id);
+    console.log('[PIX Payment] Payment created successfully:', {
+      id: payzorData.id,
+      status: payzorData.status
+    });
 
     const data = {
       id: payzorData.id,
